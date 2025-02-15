@@ -42,7 +42,7 @@ class LoginPage extends StatelessWidget {
             SizedBox(height: 20),
             _buildTextField(hintText: "E-posta"),
             SizedBox(height: 10),
-            _buildTextField(hintText: "Şifre", obscureText: true),
+            _buildTextField(hintText: "Şifreni yaz yarram", obscureText: true),
             SizedBox(height: 20),
             _buildLoginButton(),
             SizedBox(height: 10),
