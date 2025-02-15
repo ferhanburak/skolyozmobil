@@ -32,7 +32,7 @@ class ForgotPasswordPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 20),
-                _buildTextField(hintText: "E-posta mail"),
+                _buildTextField(hintText: "E-posta"),
                 SizedBox(height: 20),
                 _buildResetButton(context),
                 SizedBox(height: 10),
