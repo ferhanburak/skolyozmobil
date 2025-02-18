@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
+import 'MainPage.dart';
 
 class LoginPage extends StatelessWidget {
   @override
@@ -36,29 +37,16 @@ class LoginPage extends StatelessWidget {
           children: [
             Icon(Icons.local_hospital, size: 80, color: Colors.white),
             SizedBox(height: 20),
-            Text("Giriş Yap",
+            Text(
+              "Giriş Yap",
               style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
             _buildTextField(hintText: "E-posta"),
             SizedBox(height: 10),
-            _buildTextField(hintText: "Şifreni yaz yarram", obscureText: true),
+            _buildTextField(hintText: "Şifre", obscureText: true),
             SizedBox(height: 20),
-            _buildLoginButton(),
-            SizedBox(height: 10),
-            TextButton(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => ForgotPasswordPage()));
-              },
-              child: Text("Şifremi Unuttum", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-            SizedBox(height: 10),
-            TextButton(
-              onPressed: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => RegisterPage()));
-              },
-              child: Text("Hesabın yok mu? Kayıt Ol", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
+            _buildLoginButton(context),
           ],
         ),
       ),
@@ -79,9 +67,11 @@ class LoginPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildLoginButton(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: () {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainPage()));
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.blue.shade900,
