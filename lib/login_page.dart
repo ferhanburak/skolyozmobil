@@ -23,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
     _loadSavedCredentials();
   }
 
-  Future<void> saveCredentials(String email, String password) async {
+  Future<void> saveCredentials(String email, String password, String fullName) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('rememberMe', rememberMe);
     if (rememberMe) {
@@ -33,6 +33,9 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.remove('email');
       await prefs.remove('password');
     }
+    // Save email and fullName after successful login
+    await prefs.setString('loggedInEmail', email);
+    await prefs.setString('fullName', fullName);
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -74,9 +77,15 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String token = data['token'];
-        print('Giriş başarılı. Token: $token');
+        String email = data['email'];
+        // Use null-aware operator to safely handle null values
+        String fullName = (data['fullName'] ?? 'Kullanıcı').toString();
 
-        await saveCredentials(emailController.text, passwordController.text);
+        print('Giriş başarılı. Token: $token');
+        print('Email: $email, Full Name: $fullName');
+
+        // Save credentials including email and fullName
+        await saveCredentials(emailController.text, passwordController.text, fullName);
 
         emailController.clear();
         passwordController.clear();
@@ -258,12 +267,15 @@ class _LoginPageState extends State<LoginPage> {
         fillColor: Colors.blueGrey.shade800,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent),
+          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
         ),
       ),
     );
   }
-
 
   Widget _buildLoginButton(BuildContext context) {
     return ElevatedButton(
@@ -279,10 +291,7 @@ class _LoginPageState extends State<LoginPage> {
           ? CircularProgressIndicator(color: Colors.black)
           : Text(
         "Giriş Yap",
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-        ),
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'NotificationPage.dart';
 import 'ProfilePage.dart';
 import 'Help.dart';
+import 'login_page.dart'; // Import LoginPage for navigation
 
 class MainPage extends StatelessWidget {
   @override
@@ -98,7 +99,7 @@ class MainPage extends StatelessWidget {
     );
   }
 
-  /// Creates a futuristic settings dropdown menu.
+  /// Creates a futuristic settings dropdown menu with Logout option.
   Widget _buildSettingsDropdown(BuildContext context) {
     return PopupMenuButton<String>(
       icon: Icon(Icons.settings, color: Colors.cyanAccent),
@@ -107,6 +108,13 @@ class MainPage extends StatelessWidget {
           Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
         } else if (value == "Yardım") {
           Navigator.push(context, MaterialPageRoute(builder: (context) => HelpPage()));
+        } else if (value == "Çıkış Yap") {
+          // Navigate to LoginPage when Logout is selected
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => LoginPage()),
+                (route) => false,
+          );
         }
       },
       color: Colors.blueGrey.shade900,
@@ -119,6 +127,17 @@ class MainPage extends StatelessWidget {
           PopupMenuItem<String>(
             value: "Yardım",
             child: Text("Yardım", style: TextStyle(color: Colors.cyanAccent)),
+          ),
+          PopupMenuDivider(), // Adds a separator
+          PopupMenuItem<String>(
+            value: "Çıkış Yap",
+            child: Row(
+              children: [
+                Icon(Icons.logout, color: Colors.redAccent),
+                SizedBox(width: 10),
+                Text("Çıkış Yap", style: TextStyle(color: Colors.redAccent)),
+              ],
+            ),
           ),
         ];
       },
