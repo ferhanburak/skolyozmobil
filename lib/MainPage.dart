@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_gauges/gauges.dart'; // Import the Syncfusion gauge package
 import 'NotificationPage.dart';
 import 'ProfilePage.dart';
 import 'Help.dart';
@@ -58,27 +59,75 @@ class MainPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.local_fire_department, size: 120, color: Colors.cyanAccent), // Futuristic fire icon
+            _buildFullCircleGauge(), // Full circle gauge
             SizedBox(height: 15),
             Text(
-              "38",
+              "Tebrikler!",
               style: TextStyle(
-                fontSize: 45,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Colors.cyanAccent,
-                letterSpacing: 1.5,
               ),
             ),
-            SizedBox(height: 15),
+            SizedBox(height: 5),
             Text(
-              "You've been wearing the scoliosis brace for 38 days!",
+              "Skolyoz Korsesini 38 gündür takıyorsunuz.",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, color: Colors.white70),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white70,
+              ),
             ),
             SizedBox(height: 30),
             _buildConnectionButton(),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Creates a full-circle gauge with a max value of 365.
+  Widget _buildFullCircleGauge() {
+    return SizedBox(
+      height: 250, // Adjust size
+      width: 250,
+      child: SfRadialGauge(
+        axes: <RadialAxis>[
+          RadialAxis(
+            minimum: 0,
+            maximum: 365, // Max value is 365 days
+            startAngle: 270, // Start from top (full circle)
+            endAngle: 270,
+            showLabels: false,
+            showTicks: false,
+            axisLineStyle: AxisLineStyle(
+              thickness: 15,
+              color: Colors.grey.shade400, // Background arc
+            ),
+            pointers: <GaugePointer>[
+              RangePointer(
+                value: 38, // Current value (38 days)
+                width: 15,
+                color: Colors.cyanAccent, // Gauge color changed to cyan
+                enableAnimation: true,
+              ),
+            ],
+            annotations: <GaugeAnnotation>[
+              GaugeAnnotation(
+                widget: Text(
+                  '38',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                positionFactor: 0.0, // Center the text inside the gauge
+                angle: 90,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

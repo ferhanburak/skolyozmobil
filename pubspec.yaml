@@ -17,6 +17,7 @@ dependencies:
   google_fonts: ^6.1.0
   http: ^1.2.0
   shared_preferences: ^2.2.2
+  syncfusion_flutter_gauges: ^28.2.7
 
 dev_dependencies:
   flutter_test:

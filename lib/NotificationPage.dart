@@ -11,7 +11,7 @@ class NotificationPage extends StatelessWidget {
     );
   }
 
-  /// Creates a futuristic dark app bar with settings & notifications.
+  /// Creates a futuristic dark app bar with only a back button and title.
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.black,
@@ -22,13 +22,14 @@ class NotificationPage extends StatelessWidget {
           Navigator.pop(context);
         },
       ),
-      actions: [
-        IconButton(
-          icon: Icon(Icons.notifications, color: Colors.cyanAccent),
-          onPressed: () {},
+      title: Text(
+        "Bildirimler",
+        style: TextStyle(
+          color: Colors.cyanAccent,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
         ),
-        _buildSettingsDropdown(context),
-      ],
+      ),
     );
   }
 
@@ -47,22 +48,11 @@ class NotificationPage extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Text(
-                "Notifications",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.cyanAccent,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
+            SizedBox(height: 10),
             _buildNotificationTable(),
           ],
         ),
@@ -70,38 +60,58 @@ class NotificationPage extends StatelessWidget {
     );
   }
 
-  /// Creates a futuristic table for notifications.
+  /// Creates a futuristic table for notifications with proper spacing and visible border corners.
   Widget _buildNotificationTable() {
     return Container(
+      margin: EdgeInsets.all(8),
+      padding: EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade800.withOpacity(0.5),
+        color: Colors.blueGrey.shade900,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.5)),
+        border: Border.all(color: Colors.cyanAccent.withOpacity(0.8), width: 2),
       ),
-      child: Table(
-        columnWidths: {
-          0: FlexColumnWidth(3),
-          1: FlexColumnWidth(1),
-        },
-        children: [
-          _buildTableRow("Notification", "Date", isHeader: true),
-          _buildTableRow("Device Disconnected", "02/18/2025"),
-          _buildTableRow("Battery Low", "02/17/2025"),
-          _buildTableRow("New Firmware Available", "02/16/2025"),
-          _buildTableRow("Device Connected", "02/15/2025"),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Table(
+          columnWidths: {
+            0: FlexColumnWidth(3),
+            1: FlexColumnWidth(1),
+          },
+          children: _buildTableRows(),
+        ),
       ),
     );
   }
 
+  /// Generates the table rows dynamically and removes the line from the last row.
+  List<TableRow> _buildTableRows() {
+    List<Map<String, String>> notifications = [
+      {"Bildirim": "Cihaz Bağlantısı Kesildi", "Tarih": "02/18/2025"},
+      {"Bildirim": "Düşük Pil Seviyesi", "Tarih": "02/17/2025"},
+      {"Bildirim": "Yeni Yazılım Güncellemesi", "Tarih": "02/16/2025"},
+      {"Bildirim": "Cihaz Bağlandı", "Tarih": "02/15/2025"},
+    ];
+
+    List<TableRow> rows = [
+      _buildTableRow("Bildirim", "Tarih", isHeader: true), // Header row
+    ];
+
+    for (int i = 0; i < notifications.length; i++) {
+      bool isLastRow = i == notifications.length - 1;
+      rows.add(_buildTableRow(notifications[i]["Bildirim"]!, notifications[i]["Tarih"]!, isLastRow: isLastRow));
+    }
+
+    return rows;
+  }
+
   /// Creates a futuristic row for the table.
-  TableRow _buildTableRow(String text1, String text2, {bool isHeader = false}) {
+  TableRow _buildTableRow(String text1, String text2, {bool isHeader = false, bool isLastRow = false}) {
     return TableRow(
       decoration: BoxDecoration(
-        color: isHeader ? Colors.blueGrey.shade900 : Colors.transparent,
-        border: Border(
-          bottom: BorderSide(color: Colors.cyanAccent.withOpacity(0.5)),
-        ),
+        color: isHeader ? Colors.blueGrey.shade800 : Colors.transparent,
+        border: isLastRow
+            ? null // No bottom border for the last row
+            : Border(bottom: BorderSide(color: Colors.cyanAccent.withOpacity(0.5))),
       ),
       children: [
         Padding(
@@ -128,33 +138,6 @@ class NotificationPage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  /// Creates a futuristic settings dropdown menu.
-  Widget _buildSettingsDropdown(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: Icon(Icons.settings, color: Colors.cyanAccent),
-      onSelected: (value) {
-        if (value == "Profil") {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
-        } else if (value == "Yardım") {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => HelpPage()));
-        }
-      },
-      color: Colors.blueGrey.shade900,
-      itemBuilder: (BuildContext context) {
-        return [
-          PopupMenuItem<String>(
-            value: "Profil",
-            child: Text("Profil", style: TextStyle(color: Colors.cyanAccent)),
-          ),
-          PopupMenuItem<String>(
-            value: "Yardım",
-            child: Text("Yardım", style: TextStyle(color: Colors.cyanAccent)),
-          ),
-        ];
-      },
     );
   }
 }

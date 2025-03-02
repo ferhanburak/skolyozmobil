@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ResetPasswordPage.dart';
+import 'login_page.dart'; // Ensure login page is imported
 
 class ForgotPasswordPage extends StatefulWidget {
   @override
@@ -12,14 +13,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final TextEditingController emailController = TextEditingController();
   bool isLoading = false;
 
-  /// Email validation function
   bool _isValidEmail(String email) {
-    final RegExp emailRegex = RegExp(
-        r'^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+');
+    final RegExp emailRegex =
+    RegExp(r'^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+');
     return emailRegex.hasMatch(email);
   }
 
-  /// API integration for requesting password reset
   Future<void> requestPasswordReset() async {
     if (emailController.text.isEmpty) {
       _showErrorDialog('Lütfen e-posta adresini girin.');
@@ -35,7 +34,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       isLoading = true;
     });
 
-    final String url = 'https://scolisensemvpserver-azhpd3hchqgsc8bm.germanywestcentral-01.azurewebsites.net/api/Auth/forgot-password';
+    final String url =
+        'https://scolisensemvpserver-azhpd3hchqgsc8bm.germanywestcentral-01.azurewebsites.net/api/Auth/forgot-password';
 
     try {
       final response = await http.post(
@@ -44,20 +44,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({
-          'email': emailController.text.trim(),
-        }),
+        body: jsonEncode({'email': emailController.text.trim()}),
       );
 
       if (response.statusCode == 200) {
-        print('Şifre sıfırlama isteği gönderildi.');
-
-        /// Show Success Dialog and Navigate to ResetPasswordPage
-        _showSuccessDialog('Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
+        _showSuccessDialog(
+            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
       } else {
-        print('İstek başarısız: Status Code: ${response.statusCode}');
-        print('Hata Detayı: ${response.body}');
-
         String errorMessage = 'İstek başarısız.';
         if (response.body.isNotEmpty) {
           final Map<String, dynamic> errorData = jsonDecode(response.body);
@@ -68,7 +61,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _showErrorDialog(errorMessage);
       }
     } catch (e) {
-      print('Hata oluştu: $e');
       _showErrorDialog('Bağlantı hatası. Lütfen tekrar deneyin.');
     }
 
@@ -93,32 +85,40 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  /// Success Dialog and Navigate to ResetPasswordPage
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
       builder: (context) => AlertDialog(
         title: Text('Başarılı'),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-
-              /// Navigate to ResetPasswordPage with the entered email
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ResetPasswordPage(email: emailController.text.trim()),
-                ),
-              );
+              Navigator.pop(context); // Close the dialog
+              _navigateToResetPasswordPage(); // Navigate to ResetPasswordPage
             },
             child: Text('Devam Et'),
           ),
         ],
       ),
+    ).then((_) {
+      // Ensure navigation even if user dismisses the dialog
+      _navigateToResetPasswordPage();
+    });
+  }
+
+  /// Ensure navigation to ResetPasswordPage
+  void _navigateToResetPasswordPage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ResetPasswordPage(email: emailController.text.trim()),
+      ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -162,11 +162,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 SizedBox(height: 10),
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => LoginPage()),
+                    );
                   },
                   child: Text(
                     "Geri Dön",
-                    style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.cyanAccent, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -177,7 +181,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  /// Futuristic Text Field with consistent neon cyan borders
+  /// Custom input field
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
@@ -204,7 +208,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  /// Modern, futuristic Request button
+  /// Custom request button
   Widget _buildRequestButton() {
     return ElevatedButton(
       onPressed: isLoading ? null : () {
