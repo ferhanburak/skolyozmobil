@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'ResetPasswordPage.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -27,7 +28,6 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
-  /// Sends a Reset Password request to the logged-in email
   Future<void> _resetPassword() async {
     setState(() {
       isLoading = true;
@@ -49,19 +49,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (response.statusCode == 200) {
         print('Şifre sıfırlama isteği gönderildi.');
-        _showSuccessDialog('Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
+        _showSuccessDialog(
+            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
       } else {
         print('İstek başarısız: Status Code: ${response.statusCode}');
-        print('Hata Detayı: ${response.body}');
-
-        String errorMessage = 'İstek başarısız.';
-        if (response.body.isNotEmpty) {
-          final Map<String, dynamic> errorData = jsonDecode(response.body);
-          if (errorData.containsKey('error')) {
-            errorMessage = errorData['error'];
-          }
-        }
-        _showErrorDialog(errorMessage);
+        _showErrorDialog('Şifre sıfırlama başarısız.');
       }
     } catch (e) {
       print('Hata oluştu: $e');
@@ -97,7 +89,15 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context); // Mevcut Dialog'u kapat
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ResetPasswordPage(email: email),
+                ),
+              );
+            },
             child: Text('Tamam'),
           ),
         ],
@@ -113,7 +113,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Creates a futuristic dark app bar with a back button.
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.black,
@@ -126,12 +125,12 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       title: Text(
         "Profil",
-        style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+        style: TextStyle(
+            color: Colors.cyanAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2),
       ),
     );
   }
 
-  /// Creates the main futuristic body content.
   Widget _buildBody() {
     return Container(
       decoration: BoxDecoration(
@@ -139,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black, // Dark futuristic background
+            Colors.black,
             Colors.blueGrey.shade900,
             Colors.blueGrey.shade800,
           ],
@@ -180,7 +179,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Creates a futuristic Reset Password button.
   Widget _buildResetPasswordButton() {
     return ElevatedButton.icon(
       onPressed: isLoading ? null : () {
