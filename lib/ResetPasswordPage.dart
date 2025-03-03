@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'forgot_password_page.dart';
 import 'login_page.dart';
+import 'forgot_password_page.dart';
+import 'ProfilePage.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
+  final String previousPage; // Önceki sayfayı takip etmek için
 
-  ResetPasswordPage({required this.email});
+  ResetPasswordPage({required this.email, required this.previousPage});
 
   @override
   _ResetPasswordPageState createState() => _ResetPasswordPageState();
@@ -18,6 +20,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final TextEditingController newPasswordController = TextEditingController();
   bool isLoading = false;
 
+  /// **Şifreyi sıfırlama isteği gönderir**
   Future<void> resetPassword() async {
     if (codeController.text.isEmpty || newPasswordController.text.isEmpty) {
       _showErrorDialog('Lütfen tüm alanları doldurun.');
@@ -59,22 +62,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     });
   }
 
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Hata'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Tamam'),
-          ),
-        ],
-      ),
-    );
-  }
-
+  /// **Başarı mesajını gösterir**
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
@@ -97,6 +85,38 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     );
   }
 
+  /// **Hata mesajını gösterir**
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Hata'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// **Geri butonuna basınca önceki sayfaya yönlendirir**
+  void _goBack() {
+    if (widget.previousPage == "ProfilePage") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ProfilePage()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,97 +125,120 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         elevation: 5,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.cyanAccent),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
-            );
-          },
+          onPressed: _goBack, // Geri butonu önceki sayfaya yönlendirecek
         ),
         title: Text(
           "Şifreyi Sıfırla",
           style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black,
-              Colors.blueGrey.shade900,
-              Colors.blueGrey.shade800,
-            ],
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.lock_reset, size: 100, color: Colors.cyanAccent),
-                SizedBox(height: 20),
-                Text(
-                  "Şifreyi Sıfırla",
-                  style: TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 30),
-                _buildTextField(
-                  controller: codeController,
-                  hintText: "Kod",
-                  icon: Icons.vpn_key,
-                ),
-                SizedBox(height: 15),
-                _buildTextField(
-                  controller: newPasswordController,
-                  hintText: "Yeni Şifre",
-                  obscureText: true,
-                  icon: Icons.lock,
-                ),
-                SizedBox(height: 30),
-                _buildResetButton(),
-              ],
-            ),
-          ),
+      body: Stack(
+        children: [
+          _buildBackground(),
+          _buildPasswordResetForm(),
+        ],
+      ),
+    );
+  }
+
+  /// **Arkaplan Tasarımı**
+  Widget _buildBackground() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black,
+            Colors.blueGrey.shade900,
+            Colors.blueGrey.shade800,
+          ],
         ),
       ),
     );
   }
 
+  /// **Form Tasarımı**
+  Widget _buildPasswordResetForm() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_reset, size: 100, color: Colors.cyanAccent),
+            SizedBox(height: 20),
+            Text(
+              "Şifreyi Sıfırla",
+              style: TextStyle(
+                color: Colors.cyanAccent,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 30),
+            _buildTextField(
+              controller: codeController,
+              hintText: "Kod",
+              icon: Icons.vpn_key,
+            ),
+            SizedBox(height: 15),
+            _buildTextField(
+              controller: newPasswordController,
+              hintText: "Yeni Şifre",
+              obscureText: true,
+              icon: Icons.lock,
+            ),
+            SizedBox(height: 30),
+            _buildResetButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// **Özel TextField Bileşeni**
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
-    bool obscureText = false,
     required IconData icon,
+    bool obscureText = false,
   }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      style: TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.cyanAccent),
-        hintText: hintText,
-        hintStyle: TextStyle(color: Colors.white70),
-        filled: true,
-        fillColor: Colors.blueGrey.shade800,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade800,
+        borderRadius: BorderRadius.circular(50), // KÖŞELERİ TAM YUVARLAK YAPIYORUZ
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        style: TextStyle(color: Colors.white),
+        cursorColor: Colors.cyanAccent,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.cyanAccent),
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.white70),
+          filled: true,
+          fillColor: Colors.blueGrey.shade800,
+          contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20), // İçeriği daha ortalar
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50), // Köşeler tamamen yuvarlak
+            borderSide: BorderSide(color: Colors.cyanAccent, width: 2), // Çerçeve rengi
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50),
+            borderSide: BorderSide(color: Colors.cyanAccent.withOpacity(0.5), width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50),
+            borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+          ),
         ),
       ),
     );
   }
 
+  /// **Şifreyi sıfırla butonu**
   Widget _buildResetButton() {
     return ElevatedButton(
       onPressed: isLoading ? null : resetPassword,

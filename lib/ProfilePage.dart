@@ -20,6 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserDetails();
   }
 
+  /// Kullanıcı bilgilerini yükler.
   Future<void> _loadUserDetails() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -28,6 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  /// Şifre sıfırlama isteği gönderir.
   Future<void> _resetPassword() async {
     setState(() {
       isLoading = true;
@@ -48,15 +50,13 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (response.statusCode == 200) {
-        print('Şifre sıfırlama isteği gönderildi.');
         _showSuccessDialog(
-            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
+            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.'
+        );
       } else {
-        print('İstek başarısız: Status Code: ${response.statusCode}');
         _showErrorDialog('Şifre sıfırlama başarısız.');
       }
     } catch (e) {
-      print('Hata oluştu: $e');
       _showErrorDialog('Bağlantı hatası. Lütfen tekrar deneyin.');
     }
 
@@ -65,6 +65,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  /// Hata mesajını gösterir.
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -81,6 +82,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// Başarı mesajını gösterir ve ResetPasswordPage'e yönlendirir.
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
@@ -94,7 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ResetPasswordPage(email: email),
+                  builder: (context) => ResetPasswordPage(email: email, previousPage: "ProfilePage"),
                 ),
               );
             },
@@ -113,6 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// Uygulama çubuğu tasarımı
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.black,
@@ -126,11 +129,15 @@ class _ProfilePageState extends State<ProfilePage> {
       title: Text(
         "Profil",
         style: TextStyle(
-            color: Colors.cyanAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          color: Colors.cyanAccent,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
 
+  /// Ana gövde tasarımı
   Widget _buildBody() {
     return Container(
       decoration: BoxDecoration(
@@ -148,11 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.account_circle,
-              size: 120,
-              color: Colors.cyanAccent,
-            ),
+            Icon(Icons.account_circle, size: 120, color: Colors.cyanAccent),
             SizedBox(height: 20),
             Text(
               fullName,
@@ -179,6 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// Şifre sıfırlama butonu
   Widget _buildResetPasswordButton() {
     return ElevatedButton.icon(
       onPressed: isLoading ? null : () {

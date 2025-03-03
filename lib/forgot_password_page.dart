@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ResetPasswordPage.dart';
-import 'login_page.dart'; // Ensure login page is imported
+import 'login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   @override
@@ -13,19 +13,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final TextEditingController emailController = TextEditingController();
   bool isLoading = false;
 
+  /// **Geçerli bir e-posta adresi olup olmadığını kontrol eder.**
   bool _isValidEmail(String email) {
-    final RegExp emailRegex =
-    RegExp(r'^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+');
+    final RegExp emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     return emailRegex.hasMatch(email);
   }
 
+  /// **Şifre sıfırlama isteğini gönderir.**
   Future<void> requestPasswordReset() async {
-    if (emailController.text.isEmpty) {
-      _showErrorDialog('Lütfen e-posta adresini girin.');
+    final String email = emailController.text.trim();
+
+    if (email.isEmpty) {
+      _showErrorDialog('Lütfen e-posta adresinizi girin.');
       return;
     }
 
-    if (!_isValidEmail(emailController.text.trim())) {
+    if (!_isValidEmail(email)) {
       _showErrorDialog('Lütfen geçerli bir e-posta adresi girin.');
       return;
     }
@@ -34,8 +37,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       isLoading = true;
     });
 
-    final String url =
-        'https://scolisensemvpserver-azhpd3hchqgsc8bm.germanywestcentral-01.azurewebsites.net/api/Auth/forgot-password';
+    final String url = 'https://scolisensemvpserver-azhpd3hchqgsc8bm.germanywestcentral-01.azurewebsites.net/api/Auth/forgot-password';
 
     try {
       final response = await http.post(
@@ -44,21 +46,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({'email': emailController.text.trim()}),
+        body: jsonEncode({'email': email}),
       );
 
       if (response.statusCode == 200) {
         _showSuccessDialog(
-            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
+            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.', email);
       } else {
-        String errorMessage = 'İstek başarısız.';
-        if (response.body.isNotEmpty) {
-          final Map<String, dynamic> errorData = jsonDecode(response.body);
-          if (errorData.containsKey('error')) {
-            errorMessage = errorData['error'];
-          }
-        }
-        _showErrorDialog(errorMessage);
+        _showErrorDialog('Şifre sıfırlama başarısız.');
       }
     } catch (e) {
       _showErrorDialog('Bağlantı hatası. Lütfen tekrar deneyin.');
@@ -69,6 +64,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
   }
 
+  /// **Hata mesajlarını gösterir.**
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -85,130 +81,158 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  void _showSuccessDialog(String message) {
+  /// **Başarı mesajını gösterir ve ResetPasswordPage’e yönlendirir.**
+  void _showSuccessDialog(String message, String email) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
+      barrierDismissible: false, // Kullanıcının dışarıya tıklayıp kapatmasını önler
       builder: (context) => AlertDialog(
         title: Text('Başarılı'),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close the dialog
-              _navigateToResetPasswordPage(); // Navigate to ResetPasswordPage
+              Navigator.pop(context); // Mevcut dialog'u kapat
+              _navigateToResetPasswordPage(email);
             },
             child: Text('Devam Et'),
           ),
         ],
       ),
     ).then((_) {
-      // Ensure navigation even if user dismisses the dialog
-      _navigateToResetPasswordPage();
+      _navigateToResetPasswordPage(email); // Dialog kapansa bile yönlendirir
     });
   }
 
-  /// Ensure navigation to ResetPasswordPage
-  void _navigateToResetPasswordPage() {
+  /// **ResetPasswordPage'e yönlendirir ve hangi sayfadan geldiğini belirtir.**
+  void _navigateToResetPasswordPage(String email) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            ResetPasswordPage(email: emailController.text.trim()),
+        builder: (context) => ResetPasswordPage(email: email, previousPage: "ForgotPasswordPage"),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black,
-              Colors.blueGrey.shade900,
-              Colors.blueGrey.shade800,
-            ],
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.lock_outline, size: 100, color: Colors.cyanAccent),
-                SizedBox(height: 20),
-                Text(
-                  "Şifremi Unuttum",
-                  style: TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 30),
-                _buildTextField(
-                  controller: emailController,
-                  hintText: "E-posta",
-                  icon: Icons.email,
-                ),
-                SizedBox(height: 30),
-                _buildRequestButton(),
-                SizedBox(height: 10),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => LoginPage()),
-                    );
-                  },
-                  child: Text(
-                    "Geri Dön",
-                    style: TextStyle(
-                        color: Colors.cyanAccent, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      body: Stack(
+        children: [
+          _buildBackground(),
+          _buildForgotPasswordForm(),
+        ],
+      ),
+    );
+  }
+
+  /// **Arkaplan Tasarımı**
+  Widget _buildBackground() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black,
+            Colors.blueGrey.shade900,
+            Colors.blueGrey.shade800,
+          ],
         ),
       ),
     );
   }
 
-  /// Custom input field
+  /// **Form Tasarımı**
+  Widget _buildForgotPasswordForm() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 100, color: Colors.cyanAccent),
+            SizedBox(height: 20),
+            Text(
+              "Şifremi Unuttum",
+              style: TextStyle(
+                color: Colors.cyanAccent,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 30),
+            _buildTextField(
+              controller: emailController,
+              hintText: "E-posta",
+              icon: Icons.email,
+            ),
+            SizedBox(height: 30),
+            _buildRequestButton(),
+            SizedBox(height: 15),
+            TextButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+              },
+              child: Text(
+                "Geri Dön",
+                style: TextStyle(
+                  color: Colors.cyanAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// **Özel TextField Bileşeni**
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
     required IconData icon,
+    bool obscureText = false,
   }) {
-    return TextField(
-      controller: controller,
-      style: TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.cyanAccent),
-        hintText: hintText,
-        hintStyle: TextStyle(color: Colors.white70),
-        filled: true,
-        fillColor: Colors.blueGrey.shade800,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade800,
+        borderRadius: BorderRadius.circular(50), // KÖŞELERİ TAM YUVARLAK YAPIYORUZ
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        style: TextStyle(color: Colors.white),
+        cursorColor: Colors.cyanAccent,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.cyanAccent),
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.white70),
+          filled: true,
+          fillColor: Colors.blueGrey.shade800,
+          contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20), // İçeriği daha ortalar
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50), // Köşeler tamamen yuvarlak
+            borderSide: BorderSide(color: Colors.cyanAccent, width: 2), // Çerçeve rengi
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50),
+            borderSide: BorderSide(color: Colors.cyanAccent.withOpacity(0.5), width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50),
+            borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+          ),
         ),
       ),
     );
   }
 
-  /// Custom request button
+  /// **Şifre Sıfırlama Butonu**
   Widget _buildRequestButton() {
     return ElevatedButton(
       onPressed: isLoading ? null : () {
