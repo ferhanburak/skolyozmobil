@@ -1,39 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:syncfusion_flutter_gauges/gauges.dart'; // Import the Syncfusion gauge package
+import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'NotificationPage.dart';
 import 'ProfilePage.dart';
 import 'Help.dart';
-import 'login_page.dart'; // Import LoginPage for navigation
+import 'login_page.dart';
+import 'ScanDevicesPage.dart';
 
-class MainPage extends StatelessWidget {
+class MainPage extends StatefulWidget {
+  @override
+  _MainPageState createState() => _MainPageState();
+}
+
+class _MainPageState extends State<MainPage> {
+  String _connectionStatus = "Not Connected";
+
+  /// Updates the connection status when a device is connected or disconnected.
+  void _updateConnectionStatus(String deviceName) {
+    setState(() {
+      _connectionStatus = (deviceName == "Not Connected" || deviceName.isEmpty)
+          ? "Not Connected"
+          : "Connected to $deviceName";
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(context),
-      body: _buildBody(),
+      body: _buildBody(context),
     );
   }
 
-  /// Creates a futuristic dark app bar with settings & notifications.
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.black,
       elevation: 5,
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Image.asset(
-          'assets/scoli_logo.png', // Ensure this logo is in the assets folder
-          height: 100,
-        ),
+        child: Image.asset('assets/scoli_logo.png', height: 100),
       ),
       actions: [
         IconButton(
           icon: Icon(Icons.notifications, color: Colors.cyanAccent),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => NotificationPage()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationPage()));
           },
         ),
         _buildSettingsDropdown(context),
@@ -41,74 +51,54 @@ class MainPage extends StatelessWidget {
     );
   }
 
-  /// Creates the main futuristic body content.
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.black, // Dark futuristic background
-            Colors.blueGrey.shade900,
-            Colors.blueGrey.shade800,
-          ],
+          colors: [Colors.black, Colors.blueGrey.shade900, Colors.blueGrey.shade800],
         ),
       ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildFullCircleGauge(), // Full circle gauge
+            _buildFullCircleGauge(),
             SizedBox(height: 15),
-            Text(
-              "Tebrikler!",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.cyanAccent,
-              ),
-            ),
+            Text("Congratulations!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
             SizedBox(height: 5),
-            Text(
-              "Skolyoz Korsesini 38 gündür takıyorsunuz.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white70,
-              ),
-            ),
+            Text("You have worn the scoliosis brace for 38 days.", textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.white70)),
             SizedBox(height: 30),
-            _buildConnectionButton(),
+            _buildConnectionButton(context),
           ],
         ),
       ),
     );
   }
 
-  /// Creates a full-circle gauge with a max value of 365.
   Widget _buildFullCircleGauge() {
     return SizedBox(
-      height: 250, // Adjust size
+      height: 250,
       width: 250,
       child: SfRadialGauge(
         axes: <RadialAxis>[
           RadialAxis(
             minimum: 0,
-            maximum: 365, // Max value is 365 days
-            startAngle: 270, // Start from top (full circle)
+            maximum: 365,
+            startAngle: 270,
             endAngle: 270,
             showLabels: false,
             showTicks: false,
             axisLineStyle: AxisLineStyle(
               thickness: 15,
-              color: Colors.grey.shade400, // Background arc
+              color: Colors.grey.shade400,
             ),
             pointers: <GaugePointer>[
               RangePointer(
-                value: 38, // Current value (38 days)
+                value: 38,
                 width: 15,
-                color: Colors.cyanAccent, // Gauge color changed to cyan
+                color: Colors.cyanAccent,
                 enableAnimation: true,
               ),
             ],
@@ -116,13 +106,9 @@ class MainPage extends StatelessWidget {
               GaugeAnnotation(
                 widget: Text(
                   '38',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-                positionFactor: 0.0, // Center the text inside the gauge
+                positionFactor: 0.0,
                 angle: 90,
               ),
             ],
@@ -132,12 +118,29 @@ class MainPage extends StatelessWidget {
     );
   }
 
-  /// Creates a futuristic connection button.
-  Widget _buildConnectionButton() {
+  Widget _buildConnectionButton(BuildContext context) {
     return TextButton(
-      onPressed: () {},
+      onPressed: () async {
+        // Navigate to ScanDevicesPage and wait for the result
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ScanDevicesPage(
+              onDeviceConnected: _updateConnectionStatus,
+              initialConnectedDevice: _connectionStatus == "Not Connected"
+                  ? null
+                  : _connectionStatus.replaceFirst("Connected to ", ""),
+            ),
+          ),
+        );
+
+        // If a result is returned from ScanDevicesPage (e.g., disconnected), update status
+        if (result != null) {
+          _updateConnectionStatus(result);
+        }
+      },
       child: Text(
-        "Connected to the SmartScoliBrace",
+        _connectionStatus,
         style: TextStyle(
           color: Colors.cyanAccent,
           fontSize: 16,
@@ -148,17 +151,15 @@ class MainPage extends StatelessWidget {
     );
   }
 
-  /// Creates a futuristic settings dropdown menu with Logout option.
   Widget _buildSettingsDropdown(BuildContext context) {
     return PopupMenuButton<String>(
       icon: Icon(Icons.settings, color: Colors.cyanAccent),
       onSelected: (value) {
-        if (value == "Profil") {
+        if (value == "Profile") {
           Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
-        } else if (value == "Yardım") {
+        } else if (value == "Help") {
           Navigator.push(context, MaterialPageRoute(builder: (context) => HelpPage()));
-        } else if (value == "Çıkış Yap") {
-          // Navigate to LoginPage when Logout is selected
+        } else if (value == "Logout") {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => LoginPage()),
@@ -170,21 +171,21 @@ class MainPage extends StatelessWidget {
       itemBuilder: (BuildContext context) {
         return [
           PopupMenuItem<String>(
-            value: "Profil",
-            child: Text("Profil", style: TextStyle(color: Colors.cyanAccent)),
+            value: "Profile",
+            child: Text("Profile", style: TextStyle(color: Colors.cyanAccent)),
           ),
           PopupMenuItem<String>(
-            value: "Yardım",
-            child: Text("Yardım", style: TextStyle(color: Colors.cyanAccent)),
+            value: "Help",
+            child: Text("Help", style: TextStyle(color: Colors.cyanAccent)),
           ),
-          PopupMenuDivider(), // Adds a separator
+          PopupMenuDivider(),
           PopupMenuItem<String>(
-            value: "Çıkış Yap",
+            value: "Logout",
             child: Row(
               children: [
                 Icon(Icons.logout, color: Colors.redAccent),
                 SizedBox(width: 10),
-                Text("Çıkış Yap", style: TextStyle(color: Colors.redAccent)),
+                Text("Logout", style: TextStyle(color: Colors.redAccent)),
               ],
             ),
           ),
