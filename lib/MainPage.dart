@@ -5,6 +5,10 @@ import 'ProfilePage.dart';
 import 'Help.dart';
 import 'login_page.dart';
 import 'ScanDevicesPage.dart';
+import 'EnterCodePage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class MainPage extends StatefulWidget {
   @override
@@ -13,14 +17,114 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   String _connectionStatus = "Not Connected";
+  List<String> _devices = [];
+  BluetoothDevice? _connectedDevice;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStoredDevices();
+    _checkExistingConnections();
+  }
+
+  /// Load stored devices from SharedPreferences
+  Future<void> _loadStoredDevices() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? roleSpecificDataString = prefs.getString('roleSpecificData');
+
+    if (roleSpecificDataString != null) {
+      final roleSpecificData = jsonDecode(roleSpecificDataString);
+      List<dynamic> deviceList = roleSpecificData['devices'] ?? [];
+
+      setState(() {
+        _devices = deviceList.map<String>((device) => device['name'].toString()).toList();
+      });
+    }
+  }
+
+  /// Check if there is an already connected device and listen for disconnects
+  Future<void> _checkExistingConnections() async {
+    List<BluetoothDevice> devices = await FlutterBluePlus.connectedDevices;
+
+    if (devices.isNotEmpty) {
+      _connectedDevice = devices.first;
+      _setupConnectionListeners(_connectedDevice!);
+      setState(() {
+        _connectionStatus = "Connected to ${_connectedDevice!.name}";
+      });
+    }
+  }
+
+  /// Listen for connection state changes and update UI
+  void _setupConnectionListeners(BluetoothDevice device) {
+    device.connectionState.listen((state) {
+      if (state == BluetoothConnectionState.disconnected) {
+        setState(() {
+          _connectionStatus = "Not Connected";
+          _connectedDevice = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${device.name} disconnected."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+  }
 
   /// Updates the connection status when a device is connected or disconnected.
-  void _updateConnectionStatus(String deviceName) {
+  void _updateConnectionStatus(String deviceName) async {
     setState(() {
       _connectionStatus = (deviceName == "Not Connected" || deviceName.isEmpty)
           ? "Not Connected"
           : "Connected to $deviceName";
     });
+
+    if (deviceName != "Not Connected") {
+      List<BluetoothDevice> connectedDevices = await FlutterBluePlus.connectedDevices;
+
+      for (var device in connectedDevices) {
+        if (device.name == deviceName) {
+          _connectedDevice = device;
+          _setupConnectionListeners(_connectedDevice!);
+          return;
+        }
+      }
+
+      // If device is not found, set _connectedDevice to null
+      _connectedDevice = null;
+    }
+  }
+
+  /// Determines navigation based on device availability.
+  void _checkAndNavigate(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? storedDeviceName = prefs.getString('deviceName');
+
+    if (storedDeviceName == null || storedDeviceName.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => EnterCodePage()),
+      );
+    } else {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ScanDevicesPage(
+            onDeviceConnected: _updateConnectionStatus,
+            initialConnectedDevice: _connectionStatus == "Not Connected"
+                ? null
+                : _connectionStatus.replaceFirst("Connected to ", ""),
+          ),
+        ),
+      );
+
+      if (result != null) {
+        _updateConnectionStatus(result);
+      }
+    }
   }
 
   @override
@@ -43,7 +147,8 @@ class _MainPageState extends State<MainPage> {
         IconButton(
           icon: Icon(Icons.notifications, color: Colors.cyanAccent),
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationPage()));
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => NotificationPage()));
           },
         ),
         _buildSettingsDropdown(context),
@@ -57,7 +162,11 @@ class _MainPageState extends State<MainPage> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.black, Colors.blueGrey.shade900, Colors.blueGrey.shade800],
+          colors: [
+            Colors.black,
+            Colors.blueGrey.shade900,
+            Colors.blueGrey.shade800
+          ],
         ),
       ),
       child: Center(
@@ -66,9 +175,15 @@ class _MainPageState extends State<MainPage> {
           children: [
             _buildFullCircleGauge(),
             SizedBox(height: 15),
-            Text("Congratulations!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text("Congratulations!",
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.cyanAccent)),
             SizedBox(height: 5),
-            Text("You have worn the scoliosis brace for 38 days.", textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.white70)),
+            Text("You have worn the scoliosis brace for 38 days.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, color: Colors.white70)),
             SizedBox(height: 30),
             _buildConnectionButton(context),
           ],
@@ -106,7 +221,10 @@ class _MainPageState extends State<MainPage> {
               GaugeAnnotation(
                 widget: Text(
                   '38',
-                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
                 positionFactor: 0.0,
                 angle: 90,
@@ -120,25 +238,7 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildConnectionButton(BuildContext context) {
     return TextButton(
-      onPressed: () async {
-        // Navigate to ScanDevicesPage and wait for the result
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ScanDevicesPage(
-              onDeviceConnected: _updateConnectionStatus,
-              initialConnectedDevice: _connectionStatus == "Not Connected"
-                  ? null
-                  : _connectionStatus.replaceFirst("Connected to ", ""),
-            ),
-          ),
-        );
-
-        // If a result is returned from ScanDevicesPage (e.g., disconnected), update status
-        if (result != null) {
-          _updateConnectionStatus(result);
-        }
-      },
+      onPressed: () => _checkAndNavigate(context),
       child: Text(
         _connectionStatus,
         style: TextStyle(
@@ -156,9 +256,11 @@ class _MainPageState extends State<MainPage> {
       icon: Icon(Icons.settings, color: Colors.cyanAccent),
       onSelected: (value) {
         if (value == "Profile") {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => ProfilePage()));
         } else if (value == "Help") {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => HelpPage()));
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => HelpPage()));
         } else if (value == "Logout") {
           Navigator.pushAndRemoveUntil(
             context,

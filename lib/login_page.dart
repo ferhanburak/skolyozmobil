@@ -23,9 +23,10 @@ class _LoginPageState extends State<LoginPage> {
     _loadSavedCredentials();
   }
 
-  Future<void> saveCredentials(String email, String password, String fullName) async {
+  Future<void> saveCredentials(String email, String password, String fullName, String token, String role, dynamic roleSpecificData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('rememberMe', rememberMe);
+
     if (rememberMe) {
       await prefs.setString('email', email);
       await prefs.setString('password', password);
@@ -33,9 +34,28 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.remove('email');
       await prefs.remove('password');
     }
-    // Save email and fullName after successful login
+
+    // Save session info
     await prefs.setString('loggedInEmail', email);
     await prefs.setString('fullName', fullName);
+    await prefs.setString('authToken', token);
+    await prefs.setString('role', role);
+
+    // Save role specific data if present
+    if (roleSpecificData != null) {
+      await prefs.setString('roleSpecificData', jsonEncode(roleSpecificData));
+
+      // Check if device list is empty
+      List<dynamic> deviceList = roleSpecificData['devices'] ?? [];
+      if (deviceList.isEmpty) {
+        await prefs.remove('deviceName');
+        await prefs.remove('deviceId');
+      }
+    } else {
+      await prefs.remove('roleSpecificData');
+      await prefs.remove('deviceName');
+      await prefs.remove('deviceId');
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -76,20 +96,24 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        String token = data['token'];
-        String email = data['email'];
-        // Use null-aware operator to safely handle null values
-        String fullName = (data['fullName'] ?? 'Kullanıcı').toString();
+        String token = data['token'] ?? '';
+        String email = data['email'] ?? '';
+        String fullName = data['fullName'] ?? 'Kullanıcı';
+        String role = data['role'] ?? 'User';
+        dynamic roleSpecificData = data['roleSpecificData']; // This can be null or contain data
 
         print('Giriş başarılı. Token: $token');
-        print('Email: $email, Full Name: $fullName');
+        print('Email: $email, Full Name: $fullName, Role: $role');
+        print('Role Specific Data: ${roleSpecificData ?? "None"}');
 
-        // Save credentials including email and fullName
-        await saveCredentials(emailController.text, passwordController.text, fullName);
+        // Save credentials & session details
+        await saveCredentials(emailController.text, passwordController.text, fullName, token, role, roleSpecificData);
 
+        // Clear input fields after successful login
         emailController.clear();
         passwordController.clear();
 
+        // Navigate to MainPage
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => MainPage()),
@@ -98,7 +122,7 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         print('Giriş başarısız: Status Code: ${response.statusCode}');
         print('Hata Detayı: ${response.body}');
-        _showErrorDialog('Giriş başarısız: ${response.body}');
+        _showErrorDialog('Giriş başarısız: ${jsonDecode(response.body)['message'] ?? 'Bilinmeyen hata'}');
       }
     } catch (e) {
       print('Hata oluştu: $e');
@@ -166,27 +190,11 @@ class _LoginPageState extends State<LoginPage> {
               height: 150,
             ),
             SizedBox(height: 20),
-            Text(
-              "Giriş Yap",
-              style: TextStyle(
-                color: Colors.cyanAccent,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text("Giriş Yap", style: TextStyle(color: Colors.cyanAccent, fontSize: 26, fontWeight: FontWeight.bold)),
             SizedBox(height: 30),
-            _buildTextField(
-              controller: emailController,
-              hintText: "E-posta",
-              icon: Icons.email,
-            ),
+            _buildTextField(controller: emailController, hintText: "E-posta", icon: Icons.email),
             SizedBox(height: 15),
-            _buildTextField(
-              controller: passwordController,
-              hintText: "Şifre",
-              obscureText: true,
-              icon: Icons.lock,
-            ),
+            _buildTextField(controller: passwordController, hintText: "Şifre", obscureText: true, icon: Icons.lock),
             SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -202,26 +210,12 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       activeColor: Colors.cyanAccent,
                     ),
-                    Text(
-                      "Beni Hatırla",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                    Text("Beni Hatırla", style: TextStyle(color: Colors.white)),
                   ],
                 ),
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
-                    );
-                  },
-                  child: Text(
-                    "Şifremi Unuttum",
-                    style: TextStyle(
-                      color: Colors.cyanAccent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ForgotPasswordPage())),
+                  child: Text("Şifremi Unuttum", style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -229,19 +223,8 @@ class _LoginPageState extends State<LoginPage> {
             _buildLoginButton(context),
             SizedBox(height: 15),
             TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
-                );
-              },
-              child: Text(
-                "Hesabın yok mu? Kayıt Ol",
-                style: TextStyle(
-                  color: Colors.cyanAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterPage())),
+              child: Text("Hesabın yok mu? Kayıt Ol", style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -249,12 +232,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hintText,
-    bool obscureText = false,
-    required IconData icon,
-  }) {
+  Widget _buildTextField({required TextEditingController controller, required String hintText, bool obscureText = false, required IconData icon}) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
@@ -265,34 +243,16 @@ class _LoginPageState extends State<LoginPage> {
         hintStyle: TextStyle(color: Colors.white70),
         filled: true,
         fillColor: Colors.blueGrey.shade800,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.cyanAccent, width: 2)),
       ),
     );
   }
 
   Widget _buildLoginButton(BuildContext context) {
     return ElevatedButton(
-      onPressed: isLoading ? null : () {
-        loginUser();
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.cyanAccent,
-        foregroundColor: Colors.black,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      child: isLoading
-          ? CircularProgressIndicator(color: Colors.black)
-          : Text(
-        "Giriş Yap",
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-      ),
+      onPressed: isLoading ? null : loginUser,
+      style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+      child: isLoading ? CircularProgressIndicator(color: Colors.black) : Text("Giriş Yap", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
     );
   }
 }
