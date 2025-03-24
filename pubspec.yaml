@@ -30,3 +30,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/scoli_logo.png
+    - assets/boypp.png
+    - assets/girlpp.png

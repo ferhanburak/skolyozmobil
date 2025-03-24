@@ -12,6 +12,9 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String fullName = "Yükleniyor...";
   String email = "Yükleniyor...";
+  String birthDate = "Yükleniyor...";
+  String gender = "Yükleniyor...";
+  String phoneNumber = "Yükleniyor...";
   bool isLoading = false;
 
   @override
@@ -20,16 +23,38 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserDetails();
   }
 
-  /// Kullanıcı bilgilerini yükler.
   Future<void> _loadUserDetails() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       fullName = prefs.getString('fullName') ?? 'Bilinmeyen Kullanıcı';
       email = prefs.getString('loggedInEmail') ?? 'Bilinmeyen E-posta';
+
+      String? roleDataString = prefs.getString('roleSpecificData');
+      if (roleDataString != null) {
+        try {
+          Map<String, dynamic> roleData = jsonDecode(roleDataString);
+
+          birthDate = roleData['birthDate'] != null
+              ? _formatDate(roleData['birthDate'])
+              : "Yok";
+          gender = roleData['isMale'] == true ? "Erkek" : "Kadın";
+          phoneNumber = roleData['phoneNumber']?.toString() ?? "Yok";
+        } catch (e) {
+          print("❌ Hata: Kullanıcı bilgileri ayrıştırılamadı: $e");
+        }
+      }
     });
   }
 
-  /// Şifre sıfırlama isteği gönderir.
+  String _formatDate(String dateString) {
+    try {
+      DateTime date = DateTime.parse(dateString);
+      return "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}";
+    } catch (e) {
+      return "Geçersiz tarih";
+    }
+  }
+
   Future<void> _resetPassword() async {
     setState(() {
       isLoading = true;
@@ -44,15 +69,11 @@ class _ProfilePageState extends State<ProfilePage> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({
-          'email': email,
-        }),
+        body: jsonEncode({'email': email}),
       );
 
       if (response.statusCode == 200) {
-        _showSuccessDialog(
-            'Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.'
-        );
+        _showSuccessDialog('Şifre sıfırlama isteği gönderildi. Lütfen e-postanızı kontrol edin.');
       } else {
         _showErrorDialog('Şifre sıfırlama başarısız.');
       }
@@ -65,7 +86,6 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
-  /// Hata mesajını gösterir.
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -73,16 +93,12 @@ class _ProfilePageState extends State<ProfilePage> {
         title: Text('Hata'),
         content: Text(message),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Tamam'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Tamam')),
         ],
       ),
     );
   }
 
-  /// Başarı mesajını gösterir ve ResetPasswordPage'e yönlendirir.
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
@@ -92,7 +108,7 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Mevcut Dialog'u kapat
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -110,21 +126,18 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(),
       body: _buildBody(),
     );
   }
 
-  /// Uygulama çubuğu tasarımı
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.black,
       elevation: 5,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Colors.cyanAccent),
-        onPressed: () {
-          Navigator.pop(context);
-        },
+        onPressed: () => Navigator.pop(context),
       ),
       title: Text(
         "Profil",
@@ -137,74 +150,84 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Ana gövde tasarımı
   Widget _buildBody() {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
           colors: [
             Colors.black,
             Colors.blueGrey.shade900,
             Colors.blueGrey.shade800,
           ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
       ),
-      child: Center(
+      child: SingleChildScrollView( // 🔥 Add this
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.account_circle, size: 120, color: Colors.cyanAccent),
+            _buildProfileImage(),
             SizedBox(height: 20),
             Text(
               fullName,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.cyanAccent,
-                letterSpacing: 1.2,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              email,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.cyanAccent),
             ),
             SizedBox(height: 30),
+            _buildInfoCard(Icons.email, "E-posta", email),
+            _buildInfoCard(Icons.phone, "Telefon", phoneNumber),
+            _buildInfoCard(Icons.cake, "Doğum Tarihi", birthDate),
+            _buildInfoCard(Icons.wc, "Cinsiyet", gender),
+            SizedBox(height: 30),
             _buildResetPasswordButton(),
+            SizedBox(height: 20), // Extra padding for bottom space
           ],
         ),
       ),
     );
   }
 
-  /// Şifre sıfırlama butonu
+
+  Widget _buildProfileImage() {
+    String assetPath = gender == "Erkek" ? "assets/boypp.png" : "assets/girlpp.png";
+    return CircleAvatar(
+      radius: 60,
+      backgroundColor: Colors.cyanAccent,
+      child: CircleAvatar(
+        radius: 56,
+        backgroundImage: AssetImage(assetPath),
+        backgroundColor: Colors.transparent,
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(IconData icon, String label, String value) {
+    return Card(
+      color: Colors.blueGrey.shade700,
+      margin: EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.cyanAccent),
+        title: Text(label, style: TextStyle(color: Colors.white70, fontSize: 14)),
+        subtitle: Text(value, style: TextStyle(color: Colors.white, fontSize: 18)),
+      ),
+    );
+  }
+
   Widget _buildResetPasswordButton() {
     return ElevatedButton.icon(
-      onPressed: isLoading ? null : () {
-        _resetPassword();
-      },
+      onPressed: isLoading ? null : _resetPassword,
       icon: Icon(Icons.lock_reset, color: Colors.black),
       label: Text(
         isLoading ? "Gönderiliyor..." : "Şifreyi Sıfırla",
-        style: TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-        ),
+        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.cyanAccent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
         padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-        shadowColor: Colors.transparent,
-        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
     );
   }
