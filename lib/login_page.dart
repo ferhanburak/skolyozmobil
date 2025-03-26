@@ -45,9 +45,12 @@ class _LoginPageState extends State<LoginPage> {
     if (roleSpecificData != null) {
       await prefs.setString('roleSpecificData', jsonEncode(roleSpecificData));
 
-      // Check if device list is empty
+      // Save first device name and id if available
       List<dynamic> deviceList = roleSpecificData['devices'] ?? [];
-      if (deviceList.isEmpty) {
+      if (deviceList.isNotEmpty) {
+        await prefs.setString('deviceName', deviceList[0]['name'] ?? '');
+        await prefs.setString('deviceId', deviceList[0]['id'] ?? '');
+      } else {
         await prefs.remove('deviceName');
         await prefs.remove('deviceId');
       }
@@ -100,20 +103,17 @@ class _LoginPageState extends State<LoginPage> {
         String email = data['email'] ?? '';
         String fullName = data['fullName'] ?? 'Kullanıcı';
         String role = data['role'] ?? 'User';
-        dynamic roleSpecificData = data['roleSpecificData']; // This can be null or contain data
+        dynamic roleSpecificData = data['roleSpecificData'];
 
         print('Giriş başarılı. Token: $token');
         print('Email: $email, Full Name: $fullName, Role: $role');
         print('Role Specific Data: ${roleSpecificData ?? "None"}');
 
-        // Save credentials & session details
         await saveCredentials(emailController.text, passwordController.text, fullName, token, role, roleSpecificData);
 
-        // Clear input fields after successful login
         emailController.clear();
         passwordController.clear();
 
-        // Navigate to MainPage
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => MainPage()),
@@ -251,8 +251,14 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLoginButton(BuildContext context) {
     return ElevatedButton(
       onPressed: isLoading ? null : loginUser,
-      style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-      child: isLoading ? CircularProgressIndicator(color: Colors.black) : Text("Giriş Yap", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.cyanAccent,
+        foregroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      child: isLoading
+          ? CircularProgressIndicator(color: Colors.black)
+          : Text("Giriş Yap", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
     );
   }
 }

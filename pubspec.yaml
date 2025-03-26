@@ -16,6 +16,7 @@ dependencies:
   flutter_animate: ^4.2.0
   google_fonts: ^6.1.0
   http: ^1.2.0
+  connectivity_plus: ^5.0.2
   shared_preferences: ^2.2.2
   syncfusion_flutter_gauges: ^28.2.7
   flutter_blue_plus: ^1.5.0 # Check for the latest version

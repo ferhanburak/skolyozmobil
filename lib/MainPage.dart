@@ -103,20 +103,16 @@ class _MainPageState extends State<MainPage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? storedDeviceName = prefs.getString('deviceName');
 
-    if (storedDeviceName == null || storedDeviceName.isEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => EnterCodePage()),
-      );
-    } else {
+    print("Stored Device Name: $storedDeviceName"); // Debug log
+
+    if (storedDeviceName != null && storedDeviceName.isNotEmpty) {
+      // Device name exists, go to ScanDevicesPage
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ScanDevicesPage(
             onDeviceConnected: _updateConnectionStatus,
-            initialConnectedDevice: _connectionStatus == "Not Connected"
-                ? null
-                : _connectionStatus.replaceFirst("Connected to ", ""),
+            initialConnectedDevice: storedDeviceName,
           ),
         ),
       );
@@ -124,8 +120,15 @@ class _MainPageState extends State<MainPage> {
       if (result != null) {
         _updateConnectionStatus(result);
       }
+    } else {
+      // No device name, go to EnterCodePage
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => EnterCodePage()),
+      );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
