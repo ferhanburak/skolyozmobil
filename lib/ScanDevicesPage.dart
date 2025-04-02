@@ -24,8 +24,9 @@ class _ScanDevicesPageState extends State<ScanDevicesPage> {
   @override
   void initState() {
     super.initState();
-    _connectedDeviceName = "Not Connected";
+    _loadConnectedDevice();
   }
+
 
   @override
   void dispose() {
@@ -46,11 +47,13 @@ class _ScanDevicesPageState extends State<ScanDevicesPage> {
       FlutterBluePlus.scanResults.listen((results) {
         if (!mounted) return;
         setState(() {
+          final connectedDevice = my_ble.MyBluetoothService().connectedDevice;
           _devices = results
               .where((r) =>
           r.device.name.isNotEmpty &&
-              r.device.name != _connectedDeviceName)
+              (connectedDevice == null || r.device.id != connectedDevice.id))
               .toList();
+
         });
       });
 
@@ -120,6 +123,29 @@ class _ScanDevicesPageState extends State<ScanDevicesPage> {
       print("Disconnection error: $e");
     }
   }
+
+  Future<void> _loadConnectedDevice() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? storedDeviceName = prefs.getString('deviceName');
+
+    if (storedDeviceName != null && storedDeviceName.isNotEmpty) {
+      // Try to restore connected device from the singleton service
+      final device = my_ble.MyBluetoothService().connectedDevice;
+
+      if (device != null) {
+        setState(() {
+          _connectedDevice = device;
+          _connectedDeviceName = device.name;
+        });
+      } else {
+        // Fallback to just showing the name if device object is not accessible
+        setState(() {
+          _connectedDeviceName = storedDeviceName;
+        });
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {

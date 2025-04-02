@@ -28,7 +28,9 @@ class _MainPageState extends State<MainPage> {
 
   List<Map<String, String>> _latestMessages = [];
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  final ScrollController _scrollController = ScrollController();
   final int maxMessages = 10;
+  int _animatedListLength = 0;
 
   double _daysWorn = 0;
   StreamSubscription? _statusSubscription;
@@ -42,8 +44,10 @@ class _MainPageState extends State<MainPage> {
     _statusSubscription = my_ble.MyBluetoothService().statusStream.listen((entry) {
       if (!mounted || _listKey.currentState == null) return;
 
+      // Remove oldest if needed
       if (_latestMessages.length >= maxMessages) {
         final removed = _latestMessages.removeAt(0);
+        _animatedListLength--;
         _listKey.currentState!.removeItem(
           0,
               (context, animation) => SizeTransition(
@@ -54,17 +58,35 @@ class _MainPageState extends State<MainPage> {
         );
       }
 
+      // Add new entry
       _latestMessages.add(entry);
-      _listKey.currentState!.insertItem(
-        _latestMessages.length - 1,
-        duration: Duration(milliseconds: 300),
-      );
+      int insertIndex = _latestMessages.length - 1;
+
+      if (insertIndex >= 0 && insertIndex <= _animatedListLength) {
+        _listKey.currentState!.insertItem(
+          insertIndex,
+          duration: Duration(milliseconds: 300),
+        );
+        _animatedListLength++;
+
+        // Auto-scroll
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
     });
   }
 
   @override
   void dispose() {
     _statusSubscription?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -109,7 +131,7 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  void _updateConnectionStatus(String deviceName) async {
+  void _updateConnectionStatus(String deviceName) {
     setState(() {
       _connectionStatus = (deviceName == "Not Connected" || deviceName.isEmpty)
           ? "Not Connected"
@@ -119,9 +141,9 @@ class _MainPageState extends State<MainPage> {
 
   void _checkAndNavigate(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedDeviceName = prefs.getString('deviceName');
+    bool? isPaired = prefs.getBool('isPaired');
 
-    if (storedDeviceName != null && storedDeviceName.isNotEmpty) {
+    if (isPaired == true) {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -198,8 +220,7 @@ class _MainPageState extends State<MainPage> {
         IconButton(
           icon: Icon(Icons.notifications, color: Colors.cyanAccent),
           onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => NotificationPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationPage()));
           },
         ),
         _buildSettingsDropdown(context),
@@ -254,7 +275,8 @@ class _MainPageState extends State<MainPage> {
             ),
             child: AnimatedList(
               key: _listKey,
-              initialItemCount: _latestMessages.length,
+              controller: _scrollController,
+              initialItemCount: _animatedListLength,
               itemBuilder: (context, index, animation) {
                 return SizeTransition(
                   sizeFactor: animation,

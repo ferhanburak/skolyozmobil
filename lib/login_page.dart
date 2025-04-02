@@ -50,10 +50,13 @@ class _LoginPageState extends State<LoginPage> {
       if (deviceList.isNotEmpty) {
         await prefs.setString('deviceName', deviceList[0]['name'] ?? '');
         await prefs.setString('deviceId', deviceList[0]['id'] ?? '');
+        await prefs.setBool('isPaired', deviceList[0]['isPaired'] ?? false);
       } else {
         await prefs.remove('deviceName');
         await prefs.remove('deviceId');
+        await prefs.remove('isPaired');
       }
+
     } else {
       await prefs.remove('roleSpecificData');
       await prefs.remove('deviceName');
