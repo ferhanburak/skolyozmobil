@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'bluetooth_service.dart' as my_ble;
+import 'package:intl/intl.dart';
 
 class MainPage extends StatefulWidget {
   @override
@@ -44,7 +45,6 @@ class _MainPageState extends State<MainPage> {
     _statusSubscription = my_ble.MyBluetoothService().statusStream.listen((entry) {
       if (!mounted || _listKey.currentState == null) return;
 
-      // Remove oldest if needed
       if (_latestMessages.length >= maxMessages) {
         final removed = _latestMessages.removeAt(0);
         _animatedListLength--;
@@ -58,7 +58,6 @@ class _MainPageState extends State<MainPage> {
         );
       }
 
-      // Add new entry
       _latestMessages.add(entry);
       int insertIndex = _latestMessages.length - 1;
 
@@ -69,7 +68,6 @@ class _MainPageState extends State<MainPage> {
         );
         _animatedListLength++;
 
-        // Auto-scroll
         Future.delayed(Duration(milliseconds: 100), () {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
@@ -193,6 +191,7 @@ class _MainPageState extends State<MainPage> {
                 children: [
                   _buildGaugePage(),
                   _buildLiveDataPage(),
+                  _buildBraceUsageGraphPage(),
                 ],
               ),
             ),
@@ -305,6 +304,10 @@ class _MainPageState extends State<MainPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildBraceUsageGraphPage() {
+    return BraceUsageGraphPage();
   }
 
   Widget _buildLegend(String emoji, String text) {
@@ -466,7 +469,7 @@ class _MainPageState extends State<MainPage> {
   Widget _buildPageIndicator() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(2, (index) {
+      children: List.generate(3, (index) {
         bool isActive = index == _currentPage;
         return AnimatedContainer(
           duration: Duration(milliseconds: 300),
@@ -479,6 +482,250 @@ class _MainPageState extends State<MainPage> {
           ),
         );
       }),
+    );
+  }
+}
+
+// Add this to the bottom of the file
+class BraceUsageGraphPage extends StatefulWidget {
+  @override
+  _BraceUsageGraphPageState createState() => _BraceUsageGraphPageState();
+}
+
+class _BraceUsageGraphPageState extends State<BraceUsageGraphPage> {
+  List<Map<String, dynamic>> _usageData = [];
+  bool _isLoading = false;
+
+  bool _isWeekView = true;
+  int _viewOffset = 0; // 0 = latest week/month, -1 = one step back
+
+  DateTime? _latestAvailableDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsageData();
+  }
+
+  Future<void> _fetchUsageData() async {
+    setState(() => _isLoading = true);
+
+    final uri = Uri.parse(
+        'https://scolisensemvpserver-azhpd3hchqgsc8bm.germanywestcentral-01.azurewebsites.net/api/User/brace-usage'
+    );
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('authToken');
+
+      if (token == null || token.isEmpty) {
+        print("No token found");
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> result = json.decode(response.body);
+        List<Map<String, dynamic>> newData = result
+            .map<Map<String, dynamic>>((e) => {
+          "date": DateTime.parse(e['date']),
+          "minutes": e['minutesUsed']
+        })
+            .toList();
+
+        newData.sort((a, b) => a["date"].compareTo(b["date"]));
+
+        setState(() {
+          _usageData = newData;
+          _latestAvailableDate = _usageData.last['date'];
+          _isLoading = false;
+        });
+      } else {
+        print("Failed to fetch usage data: ${response.statusCode}");
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print("Error during usage fetch: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _changeOffset(int delta) {
+    setState(() {
+      _viewOffset += delta;
+    });
+  }
+
+  List<Map<String, dynamic>> _getDisplayedData() {
+    if (_usageData.isEmpty) return [];
+
+    DateTime end;
+    DateTime start;
+
+    if (_isWeekView) {
+      DateTime base = _latestAvailableDate ?? DateTime.now();
+      base = base.subtract(Duration(days: base.weekday - 1));
+      start = base.add(Duration(days: 7 * _viewOffset));
+      end = start.add(Duration(days: 6));
+    } else {
+      DateTime base = _latestAvailableDate ?? DateTime.now();
+      DateTime monthStart = DateTime(base.year, base.month, 1);
+      start = DateTime(monthStart.year, monthStart.month + _viewOffset, 1);
+      end = DateTime(start.year, start.month + 1, 0);
+    }
+
+    final filtered = _usageData
+        .where((entry) =>
+    entry['date'].isAfter(start.subtract(Duration(days: 1))) &&
+        entry['date'].isBefore(end.add(Duration(days: 1))))
+        .toList();
+
+    List<Map<String, dynamic>> filled;
+
+    if (_isWeekView) {
+      filled = List.generate(7, (i) {
+        final d = start.add(Duration(days: i));
+        final existing = filtered.firstWhere(
+                (e) => _sameDate(e['date'], d),
+            orElse: () => {"date": d, "minutes": 0});
+        return existing;
+      });
+    } else {
+      int daysInMonth = end.day;
+      filled = List.generate(daysInMonth, (i) {
+        final d = DateTime(start.year, start.month, i + 1);
+        final existing = filtered.firstWhere(
+                (e) => _sameDate(e['date'], d),
+            orElse: () => {"date": d, "minutes": 0});
+        return existing;
+      });
+    }
+
+    return filled;
+  }
+
+  bool _sameDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayData = _getDisplayedData();
+    final maxEntry = displayData.reduce((a, b) =>
+    (a['minutes'] as num) > (b['minutes'] as num) ? a : b);
+    double maxMinutes = (maxEntry['minutes'] as num).toDouble();
+    if (maxMinutes == 0) maxMinutes = 1;
+
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! < 0) {
+            _changeOffset(-1); // Swipe left → older
+          } else if (details.primaryVelocity! > 0) {
+            if (_viewOffset < 0) _changeOffset(1); // Swipe right → newer
+          }
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: title + toggle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _isWeekView
+                      ? "Week of ${DateFormat('yMMMd').format(displayData.first['date'])}"
+                      : DateFormat('MMMM yyyy').format(displayData.first['date']),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _isWeekView = !_isWeekView);
+                  },
+                  child: Text(
+                    _isWeekView ? "Month View" : "Week View",
+                    style: TextStyle(color: Colors.cyanAccent),
+                  ),
+                )
+              ],
+            ),
+            SizedBox(height: 6),
+            // Total duration
+            Text(
+              "${(displayData.map((e) => e['minutes']).reduce((a, b) => a + b) ~/ 60)}h ${(displayData.map((e) => e['minutes']).reduce((a, b) => a + b) % 60)}m",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            SizedBox(height: 16),
+            // Chart container
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade700,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.cyanAccent, width: 1),
+              ),
+              height: 200,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: displayData
+                    .map((entry) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        (entry == maxEntry)
+                            ? "${(entry['minutes'] ~/ 60)}h\n${(entry['minutes'] % 60)}m"
+                            : '',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 4),
+                      Container(
+                        height: ((entry['minutes'] as num).toDouble() / maxMinutes * 120)
+                            .clamp(10, 120),
+                        width: _isWeekView ? 20 : 12,
+                        decoration: BoxDecoration(
+                          color: entry == maxEntry
+                              ? Colors.cyanAccent
+                              : Colors.blueGrey.shade300,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _isWeekView
+                            ? DateFormat('E').format(entry['date'])
+                            : DateFormat('d').format(entry['date']),
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ))
+                    .toList(),
+              ),
+            ),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
+              )
+          ],
+        ),
+      ),
     );
   }
 }
