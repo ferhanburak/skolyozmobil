@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:convert';
 import 'firebase_options.dart';
 import 'login_page.dart';
 import 'MainPage.dart';
@@ -34,6 +35,11 @@ void _showLocalNotification(RemoteMessage message) async {
       channelDescription: 'Skolyoz notification channel',
       importance: Importance.max,
       priority: Priority.high,
+      showWhen: true,
+      enableLights: true,
+      enableVibration: true,
+      visibility: NotificationVisibility.public,
+      fullScreenIntent: true,
     );
 
     const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
@@ -43,6 +49,7 @@ void _showLocalNotification(RemoteMessage message) async {
       notification.title,
       notification.body,
       platformDetails,
+      payload: 'notification_click',
     );
   }
 }
@@ -67,7 +74,15 @@ void main() async {
 
   const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const InitializationSettings initSettings = InitializationSettings(android: androidInit);
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      if (response.payload == 'notification_click') {
+        // All notifications are already saved by the background handler
+        navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => NotificationPage()));
+      }
+    },
+  );
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
